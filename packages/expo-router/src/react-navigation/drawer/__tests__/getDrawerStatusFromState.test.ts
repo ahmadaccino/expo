@@ -1,42 +1,36 @@
-import { expect, test } from '@jest/globals';
-
-import type { DrawerNavigationState, DrawerStatus, ParamListBase } from '../../native';
+import { DrawerRouter } from '../../routers';
 import { getDrawerStatusFromState } from '../utils/getDrawerStatusFromState';
 
-const createState = (
-  history: DrawerNavigationState<ParamListBase>['history'],
-  defaultStatus: DrawerStatus = 'closed'
-): DrawerNavigationState<ParamListBase> => ({
-  stale: false,
-  type: 'drawer',
-  key: 'drawer-test',
-  index: 0,
-  routeNames: ['bar'],
-  routes: [{ key: 'bar', name: 'bar' }],
-  default: defaultStatus,
-  history,
+const state = DrawerRouter({}).getInitialState({
+  routeNames: ['index'],
+  routeParamList: {},
+  routeGetIdList: {},
 });
 
-test.each<{ defaultStatus: DrawerStatus }>([
-  { defaultStatus: 'closed' },
-  { defaultStatus: 'open' },
-])('falls back to defaultStatus: $defaultStatus without history', ({ defaultStatus }) => {
-  expect(getDrawerStatusFromState(createState(undefined, defaultStatus))).toBe(defaultStatus);
+it('uses closed by default when history has no drawer entry', () => {
+  expect(getDrawerStatusFromState(state)).toBe('closed');
 });
 
-test('reads the status from the last drawer entry', () => {
+it('uses the provided default status when history has no drawer entry', () => {
+  expect(getDrawerStatusFromState(state, 'open')).toBe('open');
+});
+
+it('uses the last drawer status from history instead of the provided default', () => {
   expect(
     getDrawerStatusFromState(
-      createState([
-        { type: 'route', key: 'bar' },
-        { type: 'drawer', status: 'open' },
-      ])
+      {
+        ...state,
+        history: [
+          ...(state.history ?? []),
+          { type: 'drawer', status: 'open' },
+          { type: 'drawer', status: 'closed' },
+        ],
+      },
+      'open'
     )
-  ).toBe('open');
+  ).toBe('closed');
 });
 
-test('falls back to defaultStatus when history has no drawer entry', () => {
-  expect(getDrawerStatusFromState(createState([{ type: 'route', key: 'bar' }], 'open'))).toBe(
-    'open'
-  );
+it('uses the provided default status when history is absent', () => {
+  expect(getDrawerStatusFromState({ ...state, history: undefined }, 'open')).toBe('open');
 });
